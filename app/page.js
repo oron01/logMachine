@@ -72,6 +72,9 @@ export default function App() {
   };
   
   const [currentDateStr, setCurrentDateStr] = useState(getLocalTodayString());
+  const [exportBtnText, setExportBtnText] = useState("💾 EXPORT SAVE");
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
 
   // Mount effect
   useEffect(() => {
@@ -400,116 +403,114 @@ export default function App() {
 
   // Save-File Exporting logic
   const handleExportSave = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-      proofs: proofs,
-      habits: habits
-    }, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `proof_log_save_${currentDateStr}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      const saveStr = JSON.stringify({
+        proofs: proofs,
+        habits: habits
+      }, null, 2);
+      
+      navigator.clipboard.writeText(saveStr);
+      setExportBtnText("💾 COPIED TO CLIPBOARD!");
+      setTimeout(() => setExportBtnText("💾 EXPORT SAVE"), 2500);
+    } catch (err) {
+      alert("Failed to export save to clipboard: " + err.message);
+    }
   };
 
-  // Save-File Importing logic
-  const handleImportSave = (e) => {
-    const fileReader = new FileReader();
-    fileReader.onload = async (event) => {
-      try {
-        const parsed = JSON.parse(event.target.result);
-        const importedProofs = parsed.proofs || [];
-        const importedHabits = parsed.habits || [];
-        
-        if (!Array.isArray(importedProofs) || !Array.isArray(importedHabits)) {
-          alert("Invalid save file format!");
-          return;
-        }
+  // Save-File Importing logic from text string
+  const handleImportText = async (text) => {
+    try {
+      const parsed = JSON.parse(text);
+      const importedProofs = parsed.proofs || [];
+      const importedHabits = parsed.habits || [];
+      
+      if (!Array.isArray(importedProofs) || !Array.isArray(importedHabits)) {
+        alert("Invalid save file format! Data structure must contain proofs and habits arrays.");
+        return false;
+      }
 
-        setStatus("loading");
+      setStatus("loading");
+      
+      if (db && isOnline) {
+        // Online Batch Import commit
+        const batch = writeBatch(db);
         
-        if (db && isOnline) {
-          // Online Batch Import commit
-          const batch = writeBatch(db);
-          
-          importedProofs.forEach(p => {
-            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'daily_proofs'));
-            batch.set(ref, {
+        importedProofs.forEach(p => {
+          const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'daily_proofs'));
+          batch.set(ref, {
+            proof_date: p.proof_date,
+            time_added: p.time_added,
+            category: p.category || 'None',
+            proof_text: p.proof_text,
+            created_at: p.created_at || new Date().toISOString()
+          });
+        });
+
+        importedHabits.forEach(h => {
+          const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'habits'));
+          batch.set(ref, {
+            name: h.name.toUpperCase(),
+            created_at: h.created_at || new Date().toISOString()
+          });
+        });
+
+        await batch.commit();
+      } else {
+        // Local offline merge cache
+        const localProofs = JSON.parse(localStorage.getItem('proof_logs') || '[]');
+        const localHabits = JSON.parse(localStorage.getItem('custom_habits') || '[]');
+
+        const mergedProofs = [...importedProofs, ...localProofs];
+        const uniqueProofs = [];
+        const seenProofs = new Set();
+        mergedProofs.forEach(p => {
+          const key = `${p.proof_date}_${p.proof_text}`;
+          if (!seenProofs.has(key)) {
+            seenProofs.add(key);
+            uniqueProofs.push({
+              id: p.id || 'local_' + Math.random().toString(36).substring(2, 15),
+              user_id: user.uid,
               proof_date: p.proof_date,
               time_added: p.time_added,
-              category: p.category || 'None',
+              category: p.category,
               proof_text: p.proof_text,
-              created_at: p.created_at || new Date().toISOString()
+              created_at: p.created_at
             });
-          });
+          }
+        });
 
-          importedHabits.forEach(h => {
-            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'habits'));
-            batch.set(ref, {
-              name: h.name.toUpperCase(),
-              created_at: h.created_at || new Date().toISOString()
+        const mergedHabits = [...importedHabits, ...localHabits];
+        const uniqueHabits = [];
+        const seenHabits = new Set();
+        mergedHabits.forEach(h => {
+          const key = h.name.toUpperCase();
+          if (!seenHabits.has(key)) {
+            seenHabits.add(key);
+            uniqueHabits.push({
+              id: h.id || 'local_habit_' + Math.random().toString(36).substring(2, 15),
+              user_id: user.uid,
+              name: key,
+              created_at: h.created_at
             });
-          });
+          }
+        });
 
-          await batch.commit();
-        } else {
-          // Local offline merge cache
-          const localProofs = JSON.parse(localStorage.getItem('proof_logs') || '[]');
-          const localHabits = JSON.parse(localStorage.getItem('custom_habits') || '[]');
+        localStorage.setItem('proof_logs', JSON.stringify(uniqueProofs));
+        localStorage.setItem('custom_habits', JSON.stringify(uniqueHabits));
+      }
 
-          const mergedProofs = [...importedProofs, ...localProofs];
-          const uniqueProofs = [];
-          const seenProofs = new Set();
-          mergedProofs.forEach(p => {
-            const key = `${p.proof_date}_${p.proof_text}`;
-            if (!seenProofs.has(key)) {
-              seenProofs.add(key);
-              uniqueProofs.push({
-                id: p.id || 'local_' + Math.random().toString(36).substring(2, 15),
-                user_id: user.uid,
-                proof_date: p.proof_date,
-                time_added: p.time_added,
-                category: p.category,
-                proof_text: p.proof_text,
-                created_at: p.created_at
-              });
-            }
-          });
-
-          const mergedHabits = [...importedHabits, ...localHabits];
-          const uniqueHabits = [];
-          const seenHabits = new Set();
-          mergedHabits.forEach(h => {
-            const key = h.name.toUpperCase();
-            if (!seenHabits.has(key)) {
-              seenHabits.add(key);
-              uniqueHabits.push({
-                id: h.id || 'local_habit_' + Math.random().toString(36).substring(2, 15),
-                user_id: user.uid,
-                name: key,
-                created_at: h.created_at
-              });
-            }
-          });
-
-          localStorage.setItem('proof_logs', JSON.stringify(uniqueProofs));
-          localStorage.setItem('custom_habits', JSON.stringify(uniqueHabits));
-        }
-
-        alert("Save file imported successfully!");
-        
-        if (user) {
-          await fetchProofs(user.uid);
-          await fetchHabits(user.uid);
-        }
-      } catch (err) {
-        alert("Import failed: " + err.message);
+      alert("Save imported successfully!");
+      
+      if (user) {
+        await fetchProofs(user.uid);
+        await fetchHabits(user.uid);
       }
       setStatus("loaded");
-    };
-    
-    if (e.target.files[0]) {
-      fileReader.readAsText(e.target.files[0], "UTF-8");
+      return true;
+    } catch (err) {
+      alert("Import failed: " + err.message);
+      setStatus("loaded");
+      return false;
     }
   };
 
@@ -818,17 +819,11 @@ export default function App() {
     return (
       <div className={styles.saveManagerRow}>
         <button onClick={handleExportSave} className={styles.saveBtnHalf}>
-          💾 EXPORT SAVE
+          {exportBtnText}
         </button>
-        <label className={styles.saveBtnHalf} style={{ textAlign: 'center' }}>
+        <button onClick={() => setShowImportModal(true)} className={styles.saveBtnHalf}>
           📂 IMPORT SAVE
-          <input 
-            type="file" 
-            accept=".json" 
-            onChange={handleImportSave} 
-            style={{ display: 'none' }} 
-          />
-        </label>
+        </button>
       </div>
     );
   }
@@ -865,55 +860,17 @@ export default function App() {
 
   return (
     <div className={`${styles.container} ${styles.pixelFontCaps}`}>
-      {/* Absolute top container for Status Banner and Save Manager */}
-      <div 
-        style={{
-          position: 'absolute',
-          top: '12px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 150,
-          width: '320px',
-          maxWidth: '90%'
-        }}
-      >
+      <BackgroundScene />
+
+      {/* Top flow container for Status Banner and Save Manager */}
+      <div className={styles.topStatusArea}>
         {/* Offline/Online status indicator */}
         {!isOnline ? (
-          <div 
-            style={{
-              background: '#f2efe2',
-              border: '2px solid #8da592',
-              padding: '2px 10px',
-              borderRadius: '6px',
-              fontSize: '16px',
-              color: '#3a3832',
-              fontFamily: 'var(--font-vt323), monospace',
-              boxShadow: '0 2px 0 rgba(0,0,0,0.15)',
-              textAlign: 'center',
-              width: '100%'
-            }}
-          >
+          <div className={styles.statusIndicator}>
             🟢 LOCAL OFFLINE ACTIVE
           </div>
         ) : (
-          <div 
-            style={{
-              background: '#e6f5ed',
-              border: '2px solid #8da592',
-              padding: '2px 10px',
-              borderRadius: '6px',
-              fontSize: '16px',
-              color: '#3a3832',
-              fontFamily: 'var(--font-vt323), monospace',
-              boxShadow: '0 2px 0 rgba(0,0,0,0.15)',
-              textAlign: 'center',
-              width: '100%'
-            }}
-          >
+          <div className={styles.statusIndicatorConnected}>
             🟢 CLOUD DATABASE CONNECTED
           </div>
         )}
@@ -922,8 +879,7 @@ export default function App() {
         <SaveManager />
       </div>
 
-      <BackgroundScene />
-      <div className={`${styles.mainCard}`} style={{ marginTop: '90px' }}>
+      <div className={`${styles.mainCard}`}>
         <Header />
         <TodayProofsList />
         <InputRow />
@@ -935,6 +891,73 @@ export default function App() {
         )}
         <StreakFooter />
       </div>
+
+      {/* Retro Pixel-Art Import Modal */}
+      {showImportModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>IMPORT SAVE DATA</h3>
+              <button 
+                onClick={() => { setShowImportModal(false); setImportText(""); }} 
+                className={styles.modalCloseBtn}
+              >
+                ×
+              </button>
+            </div>
+            <div className={styles.modalSubtitle}>
+              PASTE SAVE DATA OR CHOOSE TEXT FILE
+            </div>
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder="PASTE (CTRL + V) SAVE TEXT JSON HERE..."
+              className={styles.modalTextArea}
+            />
+            <div className={styles.modalFileRow}>
+              <label className={styles.modalFileLabel}>
+                📂 CHOOSE TEXT/JSON FILE
+                <input
+                  type="file"
+                  accept=".json,.txt"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setImportText(event.target.result);
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+            <div className={styles.modalActions}>
+              <button
+                onClick={async () => {
+                  const success = await handleImportText(importText);
+                  if (success) {
+                    setShowImportModal(false);
+                    setImportText("");
+                  }
+                }}
+                className={styles.modalImportBtn}
+                disabled={!importText.trim()}
+              >
+                IMPORT SAVE
+              </button>
+              <button
+                onClick={() => { setShowImportModal(false); setImportText(""); }}
+                className={styles.modalCancelBtn}
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
