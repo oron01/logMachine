@@ -1,0 +1,33 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  background-color: #b4e6cc; /* Solid original green container background */
+  font-family: var(--font-vt323), monospace; /* Default retro font */
+}
+
+/* Cozy Sage Green Scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f2efe2;
+  border-left: 2px solid #8da592;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #8da592;
+  border: 2px solid #f2efe2;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #7ca884;
+}
