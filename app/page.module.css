@@ -26,10 +26,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 76px 16px 40px 16px;
+  justify-content: flex-start;
+  padding: 18px 16px 40px 16px;
   box-sizing: border-box;
-  gap: 16px;
+  gap: 20px;
 }
 
 
@@ -730,10 +730,6 @@
 
 /* --- TOP STATUS AREA AND CENTERING FLOW --- */
 .topStatusArea {
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -742,7 +738,6 @@
   max-width: 400px;
   box-sizing: border-box;
   z-index: 150;
-  padding: 0 16px;
 }
 
 .statusIndicator {
