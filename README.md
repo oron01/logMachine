@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎮 logMachine (Proof Log) 🎮
 
-## Getting Started
+A private, retro pixel-art daily accomplishment and habit logger designed with a soft, cozy, **MapleStory-like** aesthetic. 
 
-First, run the development server:
+Keep track of your daily accomplishments ("proofs") and routine habit completions in style, without SaaS clutter or complex task managers.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- **Cozy Retro Game UI**: Double-bordered panels, parchment cream elements, pulsing pixel stars, and sage-green controls.
+- **Silent Anonymous Auth**: Authenticates instantly in the background.
+- **Multi-Pillar Habit Carousel**: One-tap scrollable logging ribbon supporting Physical, Mental, Assets, Build, Social, and Skill categories.
+- **Custom Parameters Input**: Select quantity quantities (e.g. `20 reps`) or time durations (e.g. `45 mins`) with custom notes.
+- **Local Timezone Day Navigation**: Jump back and forth day-by-day to backfill or view past logs cleanly.
+- **Dual-Engine Cache & Sync**: Works 100% offline out-of-the-box using local storage caching, and displays a sage-green `[SYNC CACHE]` button when you go online or configure your database keys.
+- **Log clipboard copies**: Export formatted text logs of your wins in one click.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## 🛠️ Local Development
 
-To learn more about Next.js, take a look at the following resources:
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+2. **Start Dev Server**:
+   ```bash
+   npm run dev
+   ```
+3. Open `http://localhost:3000` to view your accomplishments log locally!
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🚀 Static Exports & Deployment to GitHub Pages
 
-## Deploy on Vercel
+This project is configured with an **automated GitHub Actions deployment workflow**! 
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+To enable GitHub Pages to build and host your website automatically whenever you push to GitHub:
+1. On your GitHub Repository page (`oron01/logMachine`), click on the **Settings** tab at the top.
+2. In the left sidebar, click **Pages**.
+3. Under **Build and deployment > Source**, select **GitHub Actions** from the dropdown menu.
+4. That's it! GitHub will now automatically compile and deploy your live website in the background.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+To view your live site, go to:
+`https://oron01.github.io/logMachine/`
