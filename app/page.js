@@ -398,6 +398,121 @@ export default function App() {
     setStatus("loaded");
   };
 
+  // Save-File Exporting logic
+  const handleExportSave = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
+      proofs: proofs,
+      habits: habits
+    }, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `proof_log_save_${currentDateStr}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
+  // Save-File Importing logic
+  const handleImportSave = (e) => {
+    const fileReader = new FileReader();
+    fileReader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        const importedProofs = parsed.proofs || [];
+        const importedHabits = parsed.habits || [];
+        
+        if (!Array.isArray(importedProofs) || !Array.isArray(importedHabits)) {
+          alert("Invalid save file format!");
+          return;
+        }
+
+        setStatus("loading");
+        
+        if (db && isOnline) {
+          // Online Batch Import commit
+          const batch = writeBatch(db);
+          
+          importedProofs.forEach(p => {
+            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'daily_proofs'));
+            batch.set(ref, {
+              proof_date: p.proof_date,
+              time_added: p.time_added,
+              category: p.category || 'None',
+              proof_text: p.proof_text,
+              created_at: p.created_at || new Date().toISOString()
+            });
+          });
+
+          importedHabits.forEach(h => {
+            const ref = doc(collection(db, 'artifacts', appId, 'users', user.uid, 'habits'));
+            batch.set(ref, {
+              name: h.name.toUpperCase(),
+              created_at: h.created_at || new Date().toISOString()
+            });
+          });
+
+          await batch.commit();
+        } else {
+          // Local offline merge cache
+          const localProofs = JSON.parse(localStorage.getItem('proof_logs') || '[]');
+          const localHabits = JSON.parse(localStorage.getItem('custom_habits') || '[]');
+
+          const mergedProofs = [...importedProofs, ...localProofs];
+          const uniqueProofs = [];
+          const seenProofs = new Set();
+          mergedProofs.forEach(p => {
+            const key = `${p.proof_date}_${p.proof_text}`;
+            if (!seenProofs.has(key)) {
+              seenProofs.add(key);
+              uniqueProofs.push({
+                id: p.id || 'local_' + Math.random().toString(36).substring(2, 15),
+                user_id: user.uid,
+                proof_date: p.proof_date,
+                time_added: p.time_added,
+                category: p.category,
+                proof_text: p.proof_text,
+                created_at: p.created_at
+              });
+            }
+          });
+
+          const mergedHabits = [...importedHabits, ...localHabits];
+          const uniqueHabits = [];
+          const seenHabits = new Set();
+          mergedHabits.forEach(h => {
+            const key = h.name.toUpperCase();
+            if (!seenHabits.has(key)) {
+              seenHabits.add(key);
+              uniqueHabits.push({
+                id: h.id || 'local_habit_' + Math.random().toString(36).substring(2, 15),
+                user_id: user.uid,
+                name: key,
+                created_at: h.created_at
+              });
+            }
+          });
+
+          localStorage.setItem('proof_logs', JSON.stringify(uniqueProofs));
+          localStorage.setItem('custom_habits', JSON.stringify(uniqueHabits));
+        }
+
+        alert("Save file imported successfully!");
+        
+        if (user) {
+          await fetchProofs(user.uid);
+          await fetchHabits(user.uid);
+        }
+      } catch (err) {
+        alert("Import failed: " + err.message);
+      }
+      setStatus("loaded");
+    };
+    
+    if (e.target.files[0]) {
+      fileReader.readAsText(e.target.files[0], "UTF-8");
+    }
+  };
+
   // --- COLLAPSIBLE INNER RENDER COMPONENT FUNCTIONS ---
 
   function BackgroundScene() {
@@ -699,6 +814,25 @@ export default function App() {
     );
   }
 
+  function SaveManager() {
+    return (
+      <div className={styles.saveManagerRow}>
+        <button onClick={handleExportSave} className={styles.saveBtnHalf}>
+          💾 EXPORT SAVE
+        </button>
+        <label className={styles.saveBtnHalf} style={{ textAlign: 'center' }}>
+          📂 IMPORT SAVE
+          <input 
+            type="file" 
+            accept=".json" 
+            onChange={handleImportSave} 
+            style={{ display: 'none' }} 
+          />
+        </label>
+      </div>
+    );
+  }
+
   function StreakFooter() {
     return (
       <div className={`${styles.footer}`}>
@@ -766,6 +900,7 @@ export default function App() {
             SYNC {localUnsyncedCount} OFFLINE LOGS TO CLOUD DATABASE
           </button>
         )}
+        <SaveManager />
         <StreakFooter />
       </div>
     </div>
