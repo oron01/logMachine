@@ -78,7 +78,7 @@ export default function App() {
     setMounted(true);
   }, []);
 
-  // Fetch Logic (Online Supabase / Local fallback)
+  // Fetch Logic (Online Firebase / Local fallback)
   const fetchProofs = async (userId) => {
     if (db && isOnline) {
       try {
@@ -865,32 +865,65 @@ export default function App() {
 
   return (
     <div className={`${styles.container} ${styles.pixelFontCaps}`}>
-      {/* Offline Status indicator styled seamlessly in absolute alignment */}
-      {!isOnline && (
-        <div 
-          style={{
-            position: 'absolute',
-            top: '8px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: '#f2efe2',
-            border: '2px solid #8da592',
-            padding: '2px 10px',
-            borderRadius: '6px',
-            fontSize: '16px',
-            color: '#3a3832',
-            zIndex: 150,
-            fontFamily: 'var(--font-vt323), monospace',
-            boxShadow: '0 2px 0 rgba(0,0,0,0.15)',
-            pointerEvents: 'none'
-          }}
-        >
-          🟢 LOCAL OFFLINE ACTIVE
-        </div>
-      )}
+      {/* Absolute top container for Status Banner and Save Manager */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: '12px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '8px',
+          zIndex: 150,
+          width: '320px',
+          maxWidth: '90%'
+        }}
+      >
+        {/* Offline/Online status indicator */}
+        {!isOnline ? (
+          <div 
+            style={{
+              background: '#f2efe2',
+              border: '2px solid #8da592',
+              padding: '2px 10px',
+              borderRadius: '6px',
+              fontSize: '16px',
+              color: '#3a3832',
+              fontFamily: 'var(--font-vt323), monospace',
+              boxShadow: '0 2px 0 rgba(0,0,0,0.15)',
+              textAlign: 'center',
+              width: '100%'
+            }}
+          >
+            🟢 LOCAL OFFLINE ACTIVE
+          </div>
+        ) : (
+          <div 
+            style={{
+              background: '#e6f5ed',
+              border: '2px solid #8da592',
+              padding: '2px 10px',
+              borderRadius: '6px',
+              fontSize: '16px',
+              color: '#3a3832',
+              fontFamily: 'var(--font-vt323), monospace',
+              boxShadow: '0 2px 0 rgba(0,0,0,0.15)',
+              textAlign: 'center',
+              width: '100%'
+            }}
+          >
+            🟢 CLOUD DATABASE CONNECTED
+          </div>
+        )}
+
+        {/* Save-File Manager positioned cleanly outside the main logger card! */}
+        <SaveManager />
+      </div>
 
       <BackgroundScene />
-      <div className={`${styles.mainCard}`}>
+      <div className={`${styles.mainCard}`} style={{ marginTop: '90px' }}>
         <Header />
         <TodayProofsList />
         <InputRow />
@@ -900,7 +933,6 @@ export default function App() {
             SYNC {localUnsyncedCount} OFFLINE LOGS TO CLOUD DATABASE
           </button>
         )}
-        <SaveManager />
         <StreakFooter />
       </div>
     </div>
